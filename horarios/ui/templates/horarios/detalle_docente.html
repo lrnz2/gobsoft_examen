@@ -1,0 +1,1049 @@
+{% extends "horarios/base/base_site.html" %}
+{% block main_content %}
+  <div class="mb-4 mt-3">
+    <a href="{% url 'home' %}"><h4> <- Regresar a la página principal</h4></a>
+  </div>
+  <div class="row text-center mb-4">
+    <h1>Detalle docente</h1>
+  </div>
+  
+  <h2>Materias impartidas por grupo</h2>
+  <form id="select-grupo-form"
+        class="row g-3"
+        method="get"
+        action="{% url 'docente_detalle' docente_matricula %}">
+    {% csrf_token %}
+    <fieldset class="row">
+      <input name="grupo-seleccionado-id"
+             id="grupo-seleccionado-id"
+             type="hidden"
+             value="" />
+      <label for="docente-grupos-select" class="form-label">Grupo:</label>
+      <div class="row">
+        <div class="col-4">
+          <select id="grupo-seleccionado-form-select" class="form-select">
+            <option value="" selected disabled>Seleccione grupo</option>
+            {% for grupo in docente_grupos %}
+              {% if grupo.id == grupo_seleccionado.id %}
+                <option selected value="{{ grupo_seleccionado.id }}">{{ grupo.grado }} - {{ grupo.subgrupo }}</option>
+              {% else %}
+                <option value="{{ grupo.id }}">{{ grupo.grado }} - {{ grupo.subgrupo }}</option>
+              {% endif %}
+            {% endfor %}
+            <option value="grupo-crear-nuevo">
+              <button data-bs-toggle="modal"
+                      data-bs-target="#crear-grupo-modal"
+                      id="grupo-crear-nuevo">+ Crear nuevo grupo</button>
+            </option>
+          </select>
+        </div>
+        {% if grupo_seleccionado %}
+          <div class="col-4">
+            <button type="button"
+                    class="btn btn-danger"
+                    data-bs-toggle="modal"
+                    data-bs-target="#eliminar-grupo-modal"
+                    data-bs-docente-matricula="{{ docente_matricula }}"
+                    data-bs-grupo-id="{{ grupo_seleccionado.id }}">
+              Eliminar grupo {{ grupo_seleccionado.grado }} - {{ grupo_seleccionado.subgrupo }}
+            </button>
+          </div>
+        {% endif %}
+      </div>
+    </fieldset>
+  </form>
+  <h2>Horarios de clases</h2>
+  <p>Horario de clases por grupo</p>
+  <div class="d-flex justify-content-start mt-4 mb-1">
+    <p class="m-0">Seleccione un campo para agregar o editar un clase</p>
+  </div>
+  <table class="table table-striped table-bordered">
+    <thead class="table-dark">
+      <tr>
+        <th scope="col">Hora \ Día</th>
+        <th scope="col">Lunes</th>
+        <th scope="col">Martes</th>
+        <th scope="col">Miércoles</th>
+        <th scope="col">Jueves</th>
+        <th scope="col">Viernes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if grupo_seleccionado %}
+        {% for horarios_lunes_viernes in horario_clases %}
+          {% if forloop.counter == 4 %}
+            <tr>
+              <th scope="row">10:30 - 11:00</th>
+              <td colspan="5">
+                <p>Receso</p>
+              </td>
+            </tr>
+          {% endif %}
+          <tr>
+            {% for clase in horarios_lunes_viernes %}
+              {% if forloop.counter == 1 %}
+                {% comment %}Rellena la columna de horarios{% endcomment %}
+                <th scope="row">{{ clase }}</th>
+              {% else %}
+                {% if clase.materia %}
+                  <td 
+                  style="cursor: pointer; td:hover:color:#50000000"
+                  onmouseover="this.style.background = '#00000025';"
+                  onmouseout="this.style.background = 'inherit';"
+                  data-bs-toggle="modal" 
+                  data-bs-target="#editar-horario-modal"
+                  data-bs-materia-clave = "{{ clase.materia.clave }}"
+                  data-bs-hora = "{{ clase.hora }}"
+                  data-bs-dia = "{{ clase.dia }}"
+                  data-bs-clase-id = "{{ clase.id }}">
+                    <div>
+                      <div>
+                        <h6>
+                          {{ clase.materia.nombre }}
+                        </h6>
+                      </div>
+                      <div>
+                        <small> {{ clase.materia.clave }}</small>
+                      </div>
+                    </div>
+                  </td>
+                {% else %}
+                  <td 
+                  style="cursor: pointer;"
+                  onmouseover="this.style.background = '#00000025';"
+                  onmouseout="this.style.background = 'inherit';"
+                  data-bs-toggle="modal" 
+                  data-bs-target="#crear-horario-modal"
+                  data-bs-hora = "{{ forloop.parentloop.counter }}"
+                  data-bs-dia = "{{ forloop.counter0 }}" 
+                  data-bs-grupo-id = "{{ grupo_seleccionado.id }}" >---</td>
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" class="text-center">
+              <h6>No hay clases registradas en este grupo</h6>
+            </td>
+          </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="6" class="text-center">
+            <h5>Seleccione un grupo</h5>
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+  <h1>Estudiantes</h1>
+  <p>Una lista de todos los estudiantes por grupo</p>
+  <div class="d-flex justify-content-start mt-4 mb-4">
+    <button class="btn btn-success"
+            data-bs-toggle="modal"
+            data-bs-target="#crear-estudiante-modal">+ Agregar Nuevo</button>
+  </div>
+  <table class="table table-striped">
+    <thead class="table-dark">
+      <tr>
+        <th scope="col">#</th>
+        <th scope="col">Matricula</th>
+        <th scope="col">Nombre</th>
+        <th scope="col">Apellidos</th>
+        <th scope="col"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if grupo_seleccionado %}
+      {% for estudiante in estudiantes_por_grupo %}
+        <tr>
+          <th scope="row">{{ forloop.counter }}</th>
+          <td>{{ estudiante.matricula }}</td>
+          <td>{{ estudiante.nombre }}</td>
+          <td>{{ estudiante.apellidos }}</td>
+          <td>
+            <div class="d-flex flex-row justify-content-center">
+              <button 
+                class="btn btn-warning me-4"
+                data-bs-matricula="{{ estudiante.matricula }}"
+                data-bs-nombre="{{ estudiante.nombre }}"
+                data-bs-apellidos="{{ estudiante.apellidos }}"
+                data-bs-toggle="modal"
+                data-bs-target="#actualizar-estudiante-modal">Editar</button>
+              <button 
+                class="btn btn-danger"
+                data-bs-toggle="modal"
+                data-bs-target="#eliminar-estudiante-modal"
+                data-bs-matricula="{{ estudiante.matricula }}"
+                >Eliminar</button>
+            </div>
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="5" class="text-center">
+            <h6>No hay estudiantes registrados en este grupo</h6>
+          </td>
+        </tr>
+      {% endfor %}
+      {% else %}
+      <tr>
+        <td colspan="5" class="text-center">
+          <h6>Seleccione un grupo</h6>
+        </td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+{% endblock main_content %}
+
+{% block modals %}
+
+  <!-- Modal crear nuevo horario -->
+  <div class="modal fade"
+       novalidate
+       id="crear-horario-modal"
+       tabindex="-1"
+       aria-labelledby="crear-horario-modal-label"
+       aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="crear-horario-modal-label">Registrar nueva clase</h1>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="crear-horario-form"
+                class="row g-3 needs-validation"
+                action="{% url 'clase_crear' %}"
+                method="post"
+                novalidate>
+            {% csrf_token %}
+            <fieldset>
+              <input name="docente-matricula" type="hidden" value="{{ docente_matricula }}"/>
+              <input name="grupo-id" type="hidden" value="{{ grupo_seleccionado.id }}"/>
+              
+              <div class="row">
+                <div class="col">
+                  <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                      <span class="input-group-text" id="basic-addon1"> Dia: </span>
+                    </div>
+                    <input class="form-control" type="text" name="dia" id="dia-input" value="" required readonly>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                      <span class="input-group-text" id="basic-addon1"> Hora: </span>
+                    </div>
+                    <input class="form-control" type="text" name="hora" id="hora-input" value="" required readonly>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label for="materia-select-crear" class="form-label">Materia:</label>
+                <select name="materia" id="materia-select-crear" class="form-select" required>
+                  <option selected disabled value="">Seleccionar materia</option>
+
+                  {% for clase in  clases_por_grupo%}
+                  <option value="{{ clase.materia.clave }}">{{ clase.materia.nombre }}</option>
+                  {% endfor %}
+
+                  <option value="crear-nueva-materia">Otro</option>
+                </select>
+                <div class="invalid-feedback">Seleccione una opción</div>
+              </div>
+
+              <div class="mt-4 ms-2" id="datos-nueva-materia-container" hidden>
+                </br>
+                <div>
+                  <h5>Ingrese los datos de su materia</h5>
+                </div>
+                <div>
+                  <label for="nueva-materia-clave-input" class="form-label">Clave:</label>
+                  <input name="nueva-materia-clave" id="nueva-materia-clave-input"
+                        disabled
+                        type="text"
+                        value=""
+                        placeholder="AFZQPFW, HTJ-LKM"
+                        class="form-control"
+                        required
+                        onkeyup="this.value = this.value.toUpperCase().trim();"
+                        maxlength="7"
+                        minlength="7">
+                  <div class="invalid-feedback">Ingrese la clave de la materia</div>
+                </div>
+                <div>
+                  <label for="nueva-materia-nombre-input" class="form-label">Nombre:</label>
+                  <input name="nueva-materia-nombre" id="nueva-materia-nombre-input"
+                        disabled
+                        type="text"
+                        value=""
+                        placeholder="CALCULO DIFERENCIAL I, PROGRAMACION II, ..."
+                        class="form-control"
+                        required
+                        onkeyup="this.value = this.value.toUpperCase();">
+                  <div class="invalid-feedback">Ingrese el nombre de su materia en mayúsculas</div>
+                </div>
+                <div>
+                  <label for="nueva-materia-creditos-input" class="form-label">Créditos:</label>
+                  <input name="nueva-materia-creditos" id="nueva-materia-creditos-input"
+                        disabled
+                        type="number"
+                        min="1"
+                        max="15"
+                        value=""
+                        placeholder="5"
+                        class="form-control"
+                        required>
+                  <div class="invalid-feedback">Ingrese los creditos de la materia, rango de 1 a 15</div>
+                </div>
+              </div>
+            </fieldset>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" form="crear-horario-form" class="btn btn-primary">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal actualizar horario -->
+  <div class="modal fade"
+       novalidate
+       id="editar-horario-modal"
+       tabindex="-1"
+       aria-labelledby="editar-horario-modal-label"
+       aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="editar-horario-modal-label">Editar clase</h1>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+
+          <form id="eliminar-horario-form" action=" {% url 'eliminar_horario_clase' %} " method="post" hidden>
+            {% csrf_token %}
+            <fieldset>
+              <input name="docente-matricula" type="hidden" value="{{ docente_matricula }}"/>
+              <input name="grupo-id" type="hidden" value="{{ grupo_seleccionado.id }}"/>
+              <input name="clase-id" type="hidden" id="eliminar-clase-id-input"/>
+
+              <input type="hidden" name="dia" id="eliminar-form-dia-input" value="" required readonly>
+              <input type="hidden" name="hora" id="eliminar-form-hora-input" value="" required readonly>
+              <input type="hidden" name="materia-clave" id="eliminar-form-materia-clave" value="" required readonly>
+            </fieldset>
+          </form>
+          <form id="actualizar-horario-form"
+                class="row g-3 needs-validation"
+                action="{% url 'actualizar_horario_clase' %}"
+                method="post"
+                novalidate>
+            {% csrf_token %}
+            <fieldset>
+            <input name="docente-matricula" type="hidden" value="{{ docente_matricula }}"/>
+            <input name="materia-clave-actual" id="materia-clave-actual" type="hidden" value=""/>
+            <input name="clase-id" id="clase-id-input" type="hidden" value=""/>
+            <input name="grupo-id" id="grupo-id-input" type="hidden" value="{{ grupo_seleccionado.id }}"/>
+            
+            <div class="row">
+              <div class="col">
+                <div class="input-group mb-3">
+                  <div class="input-group-prepend">
+                    <span class="input-group-text" id="basic-addon1"> Dia: </span>
+                  </div>
+                  <input class="form-control" type="text" name="dia" id="dia-input" value="" required readonly>
+                </div>
+              </div>
+              <div class="col">
+                <div class="input-group mb-3">
+                  <div class="input-group-prepend">
+                    <span class="input-group-text" id="basic-addon1"> Hora: </span>
+                  </div>
+                  <input class="form-control" type="text" name="hora" id="hora-input" value="" required readonly>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label for="materia-select-editar" class="form-label">Materia:</label>
+              <select name="materia-clave" id="materia-select-editar" class="form-select" required>
+                <option selected disabled value="">Seleccionar materia</option>
+                {% for clase in  clases_por_grupo%}
+                <option value="{{ clase.materia.clave }}">{{ clase.materia.nombre }}</option>
+                {% endfor %}
+                <option value="crear-nueva-materia">Otro</option>
+              </select>
+              <div class="invalid-feedback">Seleccione una opción</div>
+            </div>
+            <div class="mt-4 ms-2" id="datos-nueva-materia-container-editar" hidden>
+            </br>
+            <div>
+              <h5>Ingrese los datos de su materia</h5>
+            </div>
+            <div>
+              <label for="nueva-materia-clave-input" class="form-label">Clave:</label>
+              <input name="nueva-materia-clave" id="nueva-materia-clave-input-editar"
+                    disabled
+                    type="text"
+                    value=""
+                    placeholder="AFZQPFW, HTJ-LKM"
+                    class="form-control"
+                    required
+                    onkeyup="this.value = this.value.toUpperCase().trim();"
+                    maxlength="7"
+                    minlength="7">
+              <div class="invalid-feedback">Ingrese la clave de la materia</div>
+            </div>
+            <div>
+              <label for="nueva-materia-nombre-input" class="form-label">Nombre:</label>
+              <input name="nueva-materia-nombre" id="nueva-materia-nombre-input-editar"
+                    disabled
+                    type="text"
+                    value=""
+                    placeholder="CALCULO DIFERENCIAL I, PROGRAMACION II, ..."
+                    class="form-control"
+                    required
+                    onkeyup="this.value = this.value.toUpperCase();">
+              <div class="invalid-feedback">Ingrese el nombre de su materia en mayúsculas</div>
+            </div>
+            <div>
+              <label for="nueva-materia-creditos-input" class="form-label">Créditos:</label>
+              <input name="nueva-materia-creditos" id="nueva-materia-creditos-input-editar"
+                    disabled
+                    type="number"
+                    min="1"
+                    max="15"
+                    value=""
+                    placeholder="5"
+                    class="form-control"
+                    required>
+              <div class="invalid-feedback">Ingrese los creditos de la materia, rango de 1 a 15</div>
+            </div>
+          </div>
+          </fieldset>
+
+            {% comment %}
+            <div>
+              <label for="dia-select" class="form-label">Día:</label>
+              <select id="dia-select" class="form-select" required>
+                <option selected disabled value="">Seleccionar día</option>
+                <option value="l">Lunes</option>
+                <option value="m">Martes</option>
+                <option value="mm">Miércoles</option>
+                <option value="j">Jueves</option>
+                <option value="v">Viernes</option>
+              </select>
+              <div class="invalid-feedback">Seleccione una opción</div>
+            </div>
+            <div>
+              <label for="hora-select" class="form-label">Hora:</label>
+              <select id="hora-select" class="form-select" required>
+                <option selected disabled value="">Seleccionar hora:</option>
+                <option value="1">7:30 - 8:30</option>
+                <option value="2">8:30 - 9:30</option>
+                <option value="3">9:30 - 10:30</option>
+                <option value="4">11:00 - 12:00</option>
+                <option value="5">12:00 - 13:00</option>
+                <option value="6">13:00 - 14:00</option>
+                <option value="7">14:00 - 15:00</option>
+              </select>
+              <div class="invalid-feedback">Seleccione una opción</div>
+            </div>
+            {% endcomment %}
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" form="eliminar-horario-form" class="btn btn-danger" style="margin-right: auto;">Eliminar clase</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" form="actualizar-horario-form" class="btn btn-primary">Guardar Cambios</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal crear nuevo estudiante -->
+  <div class="modal fade"
+       novalidate
+       id="crear-estudiante-modal"
+       tabindex="-1"
+       aria-labelledby="crear-estudiante-modal-label"
+       aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="crear-estudiante-modal-label">Registrar nuevo estudiante</h1>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="crear-estudiante-form"
+                class="row g-3 needs-validation"
+                action="{% url 'crear_estudiante' %}"
+                method="post"
+                novalidate>
+                {% csrf_token %}
+            <fieldset>
+            <input name="grupo-id" type="hidden" value="{{ grupo_seleccionado.id }}"/>
+            <input name="docente-matricula" type="hidden" value="{{ docente_matricula }}"/>
+            <div>
+              <label for="#crear-estudiante-select-matricula" class="form-label">Matrícula:</label>
+              <select 
+                type="number"
+                name="matricula" 
+                id="crear-estudiante-select-matricula"
+                required
+                min="1000000"
+                max="9999999"
+                placeholder="Ingresar matrícula"
+                autocomplete="off"
+                >
+                <option value="" selected disabled>Ingrese matrícula...</option>
+                {% for estudiante in estudiantes_no_en_grupo %}
+                  <option value="{{ estudiante.matricula }}">{{ estudiante.matricula }} - {{ estudiante.nombre }} - {{ estudiante.apellidos }}</option>
+                {% endfor %}
+              </select>
+              <div class="invalid-feedback">La matrícula debe contener 7 digitos</div>
+            </div>
+            <div>
+              <label for="#nuevo-estudiante-nombre-input" class="form-label">Nombre(s):</label>
+              <input
+                name="nombre"
+                type="text"
+                class="form-control"
+                id="nuevo-estudiante-nombre-input"
+                value=""
+                required
+                placeholder="Joan José"
+                />
+              <div class="invalid-feedback">Agregue un nombre válido</div>
+            </div>
+            <div>
+              <label for="#nuevo-estudiante-apellidos-input" class="form-label">Apellidos:</label>
+              <input 
+                name="apellidos"
+                type="text"
+                class="form-control"
+                id="nuevo-estudiante-apellidos-input"
+                value=""
+                required 
+                placeholder="Hernández Martínez"/>
+              <div class="invalid-feedback">Agregue apellidos válidos</div>
+            </div>
+          </fieldset>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" form="crear-estudiante-form" class="btn btn-primary">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal actualizar estudiante -->
+  <div class="modal fade"
+       id="actualizar-estudiante-modal"
+       tabindex="-1"
+       aria-labelledby="actualizar-estudiante-modal-label"
+       aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="actualizar-estudiante-modal-label">Editar datos del docente</h1>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div>
+            <p>
+              Matricula: <strong id="estudiante-matricula-label"></strong>
+            </p>
+          </div>
+          <form id="editar-estudiante-form"
+                action="{% url 'actualizar_estudiante' %}"
+                method="post"
+                class="row g-3 needs-validation">
+                {% csrf_token %}
+                <fieldset>
+
+            <input name="docente-matricula" type="hidden" value="{{ docente_matricula }}"/>
+            <input name="grupo-id" type="hidden" value="{{ grupo_seleccionado.id }}"/>
+            <div>
+              <label for="#actualizar-estudiante-matricula-input" class="form-label">Matricula:</label>
+              <input type="text"
+                     class="form-control"
+                     id="actualizar-estudiante-matricula-input"
+                     value=""
+                     required 
+                     name="matricula"
+                     readonly/>
+            </div>
+            <div>
+              <label for="#actualizar-estudiante-nombre-input" class="form-label">Nombre:</label>
+              <input type="text"
+                     class="form-control"
+                     id="actualizar-estudiante-nombre-input"
+                     value=""
+                     required 
+                     name="nombre"/>
+            </div>
+            <div>
+              <label for="#actualizar-estudiante-apellidos-input" class="form-label">Apellidos:</label>
+              <input type="text"
+                     class="form-control"
+                     id="actualizar-estudiante-apellidos-input"
+                     value=""
+                     required 
+                     name="apellidos"/>
+            </div>
+          </fieldset>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" form="editar-estudiante-form" class="btn btn-primary">Guardar Cambios</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal eliminar estudiante -->
+  <div class="modal fade"
+       id="eliminar-estudiante-modal"
+       tabindex="-1"
+       aria-labelledby="eliminar-estudiante-modal-label"
+       aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="eliminar-estudiante-modal-label">Eliminar estudiante</h1>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div>
+            <p>
+              Se eliminará de la lista de estudiantes ¿Desea
+              <strong>eliminarlo</strong> de la lista?
+            </p>
+          </div>
+          <form id="eliminar-estudiante-form"
+                action="{% url 'eliminar_estudiante' %}"
+                method="post"
+                class="row g-3">
+                {% csrf_token %}
+                <fieldset>
+                  <input name="grupo-id" type="hidden" value="{{ grupo_seleccionado.id }}"/>
+                  <input name="docente-matricula" type="hidden" value="{{ docente_matricula }}"/>
+                  <input name="grupo-grado" type="hidden" value="{{ grupo_seleccionado.grado }}"/>
+                  <input name="grupo-subgrupo" type="hidden" value="{{ grupo_seleccionado.subgrupo }}"/>
+                  <input name="estudiante-matricula" id="eliminar-estudiante-matricula-input" type="hidden" value=""/>
+                </fieldset>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" form="eliminar-estudiante-form" class="btn btn-primary">Eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal crear nuevo grupo -->
+  <div class="modal fade"
+       novalidate
+       id="crear-grupo-modal"
+       tabindex="-1"
+       aria-labelledby="crear-grupo-modal-label"
+       aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="crear-grupo-modal-label">Registrar nueva clase</h1>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="crear-grupo-form"
+                class="row g-3 needs-validation"
+                action="{% url 'crear_grupo' %}"
+                method="post"
+                novalidate>
+            {% csrf_token %}
+            <fieldset>
+              <input type="hidden"
+                     value="{{ docente_matricula }}"
+                     name="docente-matricula" />
+              <div>
+                <label for="grupo-grado" class="form-label">Grado:</label>
+                <select name="grupo-grado" id="grupo-grado" class="form-select" required>
+                  <option selected disabled value="">Seleccionar grado</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="8">8</option>
+                  <option value="9">9</option>
+                  <option value="10">10</option>
+                  <option value="11">11</option>
+                  <option value="12">12</option>
+                </select>
+                <div class="invalid-feedback">Seleccione una opción</div>
+              </div>
+              <div>
+                <label for="grupo-subgrupo" class="form-label">Subgrado:</label>
+                <select name="grupo-subgrupo"
+                        id="grupo-subgrupo"
+                        class="form-select"
+                        required>
+                  <option selected disabled value="">Seleccione subgrupo</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                  <option value="E">E</option>
+                  <option value="F">F</option>
+                </select>
+                <div class="invalid-feedback">Seleccione una opción</div>
+              </div>
+            </fieldset>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" form="crear-grupo-form" class="btn btn-primary">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!--Modal eliminar grupo -->
+  <div class="modal fade"
+       id="eliminar-grupo-modal"
+       tabindex="-1"
+       aria-labelledby="eliminar-grupo-modal-label"
+       aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="eliminar-grupo-modal-label">Eliminar grupo</h1>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div>
+            <p>
+              Se eliminarán todos los datos del grupo ¿Desea
+              <strong>eliminar</strong> los registros del grupo?
+            </p>
+          </div>
+          <form id="eliminar-grupo-form"
+                action="{% url 'eliminar_grupo' %}"
+                method="post"
+                class="row g-3">
+            {% csrf_token %}
+            <fieldset>
+              <input id="eliminar-grupo-id-input" type="hidden" name="grupo-id">
+              <input id="eliminar-grupo-docente-matricula-input"
+                     type="hidden"
+                     name="docente-matricula">
+            </fieldset>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" form="eliminar-grupo-form" class="btn btn-primary">Eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% endblock modals %}
+
+{% block scripts %}
+  <script>
+    // VALIDACION DE FORMULARIOS
+    (() => {
+      "use strict";
+      const forms = document.querySelectorAll(".needs-validation");
+      Array.from(forms).forEach((form) => {
+        form.addEventListener(
+          "submit",
+          (event) => {
+            if (!form.checkValidity()) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+            form.classList.add("was-validated");
+          },
+          false
+        );
+      });
+    })();
+
+  // MODAL CREAR ESTUDIANTE
+  document.addEventListener("DOMContentLoaded", function(event) {
+
+    new TomSelect("#crear-estudiante-select-matricula",{
+      persist: false,
+      create: true,
+      sortField: {field: "text"},
+      render:{
+        option_create: function( data, escape ){
+          return '<div class="create">Usar <strong>' + escape(data.input) + '</strong>&hellip;</div>';
+        },
+        no_results: function( data, escape ){
+          return '<div class="no-results">Matrícula no registrada</div>';
+        },
+      }
+    });
+  });
+  const crearEstudianteSelectMatricula = document.querySelector(
+    "#crear-estudiante-select-matricula" 
+  );
+  crearEstudianteSelectMatricula.addEventListener("change", (event) => {
+    const matriculaSelectValue = crearEstudianteSelectMatricula.options[crearEstudianteSelectMatricula.selectedIndex].text
+
+    matriculaSelectSplited = matriculaSelectValue.split(' - ')
+
+    const crearEstudianteNombreInput = document.getElementById('nuevo-estudiante-nombre-input')
+    const crearEstudianteApellidosInput = document.getElementById('nuevo-estudiante-apellidos-input')
+    // se selecciono un estudiante registrado
+    console.log("mat splited", matriculaSelectSplited)
+    if(matriculaSelectSplited.length == 3){
+      const [matricula, nombre, apellidos] = matriculaSelectSplited
+      crearEstudianteNombreInput.value = nombre
+      crearEstudianteApellidosInput.value = apellidos
+
+      crearEstudianteNombreInput.setAttribute('readonly','readonly')
+      crearEstudianteApellidosInput.setAttribute('readonly','readonly')
+    } else{
+      crearEstudianteNombreInput.value = ""
+      crearEstudianteApellidosInput.value = ""
+
+      crearEstudianteNombreInput.removeAttribute('readonly')
+      crearEstudianteApellidosInput.removeAttribute('readonly')
+    }
+
+  });
+
+  //MODAL ACTUALIZAR ESTUDIANTE 
+  const actualizarEstudianteModal = document.getElementById("actualizar-estudiante-modal")
+  actualizarEstudianteModal.addEventListener('show.bs.modal', event => {
+    button = event.relatedTarget
+    const matricula = button.getAttribute('data-bs-matricula')
+    const nombre = button.getAttribute('data-bs-nombre')
+    const apellidos = button.getAttribute('data-bs-apellidos')
+
+    const matriculaInput = actualizarEstudianteModal.querySelector("#actualizar-estudiante-matricula-input")
+    const nombreInput = actualizarEstudianteModal.querySelector("#actualizar-estudiante-nombre-input")
+    const apellidosInput = actualizarEstudianteModal.querySelector("#actualizar-estudiante-apellidos-input")
+
+    matriculaInput.value = matricula
+    nombreInput.value = nombre
+    apellidosInput.value = apellidos
+  })
+
+  //MODAL ELIMINAR ESTUDIANTE 
+  const eliminarEstudianteModal = document.getElementById("eliminar-estudiante-modal")
+  eliminarEstudianteModal.addEventListener('show.bs.modal', event => {
+    button = event.relatedTarget
+    const matricula = button.getAttribute('data-bs-matricula')
+
+    const matriculaInput = eliminarEstudianteModal.querySelector("#eliminar-estudiante-matricula-input")
+
+    matriculaInput.value = matricula
+  })
+
+  // MODAL CREAR NUEVO HORARIO CLASE
+  const crearHorarioModal = document.getElementById("crear-horario-modal")
+  crearHorarioModal.addEventListener('show.bs.modal', event =>{ 
+    button = event.relatedTarget
+    const horas = [
+      "7:30 - 8:30",
+      "8:30 - 9:30",
+      "9:30 - 10:30",
+      "11:00 - 12:00",
+      "12:00 - 13:00",
+      "13:00 - 14:00",
+      "14:00 - 15:00",
+      "15:00 - 16:00"
+    ]
+    const dias = [
+      "Lunes",
+      "Martes",
+      "Miércoles",
+      "Jueves",
+      "Viernes",
+    ]
+
+    const horaIndex = button.getAttribute('data-bs-hora')
+    const diaIndex = button.getAttribute('data-bs-dia')
+
+    const hora = horas[parseInt(horaIndex) - 1]
+    const dia = dias[parseInt(diaIndex) - 1]
+
+    const horaInput = crearHorarioModal.querySelector('#hora-input')
+    const diaInput = crearHorarioModal.querySelector('#dia-input')
+
+    horaInput.value = hora
+    diaInput.value = dia
+
+  })
+
+  // EDITAR HORARIO MODAL
+  const editarHorarioModal = document.querySelector("#editar-horario-modal")
+  editarHorarioModal.addEventListener('show.bs.modal', event => {
+    button = event.relatedTarget
+
+    const materiaClave = button.getAttribute('data-bs-materia-clave')
+    const hora = button.getAttribute('data-bs-hora')
+    const dia = button.getAttribute('data-bs-dia')
+    const claseId = button.getAttribute('data-bs-clase-id')
+
+    const horaInput = editarHorarioModal.querySelector('#hora-input')
+    const diaInput = editarHorarioModal.querySelector('#dia-input')
+    const claseIdInput = editarHorarioModal.querySelector('#clase-id-input')
+    const eliminarClaseIdInput = editarHorarioModal.querySelector('#eliminar-clase-id-input')
+    const materiaSelect = editarHorarioModal.querySelector('#materia-select-editar')
+    const materiaClaveActual = editarHorarioModal.querySelector('#materia-clave-actual')
+
+    materiaClaveActual.value = materiaClave
+    materiaSelect.value = materiaClave
+    horaInput.value = hora
+    diaInput.value = dia
+    claseIdInput.value = claseId
+    eliminarClaseIdInput.value = claseId
+
+    //BOTON ELIMINAR
+    const eliminarFormHoraInput = editarHorarioModal.querySelector("#eliminar-form-hora-input")
+    const eliminarFormDiaInput = editarHorarioModal.querySelector("#eliminar-form-dia-input")
+    const eliminarFormMateriaClave = editarHorarioModal.querySelector("#eliminar-form-materia-clave")
+    eliminarFormHoraInput.value = hora
+    eliminarFormDiaInput.value = dia
+    eliminarFormMateriaClave.value = materiaClave
+
+  })
+
+
+  // SELECT MATERIA DEL MODAL REGISTRAR NUEVA CLASE - HORARIO
+  const modalRegistrarClaseMateriaSelect = document.querySelector(
+    "#materia-select-crear" 
+  );
+  modalRegistrarClaseMateriaSelect.addEventListener("change", (event) => {
+    const materiaSelectValue = modalRegistrarClaseMateriaSelect.value
+
+    const nuevaMateriaClaveInput = document.getElementById('nueva-materia-clave-input')
+    const nuevaMateriaNombreInput = document.getElementById('nueva-materia-nombre-input')
+    const nuevaMateriaCreditosInput = document.getElementById('nueva-materia-creditos-input')
+    const datosNuevaMateriaContainer = document.getElementById('datos-nueva-materia-container')
+    
+    if(materiaSelectValue == 'crear-nueva-materia'){
+      nuevaMateriaClaveInput.removeAttribute('disabled')
+      nuevaMateriaNombreInput.removeAttribute('disabled')
+      nuevaMateriaCreditosInput.removeAttribute('disabled')
+      datosNuevaMateriaContainer.removeAttribute('hidden')
+
+    } else{
+      nuevaMateriaClaveInput.setAttribute('disabled', 'false')
+      nuevaMateriaNombreInput.setAttribute('disabled', 'false')
+      nuevaMateriaCreditosInput.setAttribute('disabled', 'false')
+      datosNuevaMateriaContainer.setAttribute('hidden', 'true')
+    }
+
+  });
+
+   // SELECT MATERIA DEL MODAL EDITAR CLASE - HORARIO
+   const modalActializarClaseMateriaSelect = document.getElementById(
+    "materia-select-editar" 
+  );
+  modalActializarClaseMateriaSelect.addEventListener("change", (event) => {
+    
+    const materiaSelectValue = modalActializarClaseMateriaSelect.value
+
+    const nuevaMateriaClaveInput = document.getElementById('nueva-materia-clave-input-editar')
+    const nuevaMateriaNombreInput = document.getElementById('nueva-materia-nombre-input-editar')
+    const nuevaMateriaCreditosInput = document.getElementById('nueva-materia-creditos-input-editar')
+    const datosNuevaMateriaContainer = document.getElementById('datos-nueva-materia-container-editar')
+    
+    if(materiaSelectValue == 'crear-nueva-materia'){
+      nuevaMateriaClaveInput.removeAttribute('disabled')
+      nuevaMateriaNombreInput.removeAttribute('disabled')
+      nuevaMateriaCreditosInput.removeAttribute('disabled')
+      datosNuevaMateriaContainer.removeAttribute('hidden')
+
+    } else{
+      nuevaMateriaClaveInput.setAttribute('disabled', 'false')
+      nuevaMateriaNombreInput.setAttribute('disabled', 'false')
+      nuevaMateriaCreditosInput.setAttribute('disabled', 'false')
+      datosNuevaMateriaContainer.setAttribute('hidden', 'true')
+    }
+
+  });
+
+  // SELECT GRUPO
+  const grupoSeleccionadoFormSelect = document.querySelector(
+    "#grupo-seleccionado-form-select"
+  );
+  grupoSeleccionadoFormSelect.addEventListener("change", (event) => {
+    const grupoSeleccionadoFormSelectValue = grupoSeleccionadoFormSelect.value // contiene id del grupo seleccionado
+    console.log("slect value: ",grupoSeleccionadoFormSelectValue)
+    if(grupoSeleccionadoFormSelectValue == 'grupo-crear-nuevo'){
+      grupoSeleccionadoFormSelect.value = ""
+
+      const crearGrupoModal = new bootstrap.Modal(document.getElementById('crear-grupo-modal'))
+      crearGrupoModal.show()
+      return;
+    }
+
+    grupoSeleccionadoInputId = document.querySelector(
+      "#grupo-seleccionado-id" 
+    );
+    grupoSeleccionadoInputId.value = grupoSeleccionadoFormSelectValue
+
+    const grupoSeleccionadoForm = document.querySelector("#select-grupo-form");
+    grupoSeleccionadoForm.submit();
+  });
+
+  // MODAL ELIMINAR GRUPO
+  const eliminarGrupoModal = document.getElementById('eliminar-grupo-modal')
+  eliminarGrupoModal.addEventListener('show.bs.modal', event =>{
+    const button = event.relatedTarget
+
+    const docenteMatricula = button.getAttribute('data-bs-docente-matricula')
+    const grupoId = button.getAttribute('data-bs-grupo-id')
+
+    const grupoIdInput = document.querySelector("#eliminar-grupo-id-input")
+    const docenteMatriculaInput = document.querySelector("#eliminar-grupo-docente-matricula-input")
+
+    docenteMatriculaInput.value = docenteMatricula
+    grupoIdInput.value = grupoId
+
+  })
+  </script>
+{% endblock scripts %}

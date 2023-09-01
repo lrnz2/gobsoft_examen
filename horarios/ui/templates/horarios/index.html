@@ -1,0 +1,244 @@
+{% extends 'horarios/base/base_site.html' %}
+
+{% block main_content %}
+  <h1>Docentes: </h1>
+  <h2>Una lista de todos los maestros</h2>
+  <div class="d-flex justify-content-between mt-4 mb-4">
+    <div>
+      <button 
+      class="btn btn-success"
+      data-bs-toggle="modal"
+      data-bs-target="#crear-docente-modal"
+      >+ Agregar Nuevo</button>
+    </div>
+    {% if mensaje %}
+      <div class="ms-auto me-auto">
+        {% if error %}
+        <div class="alert alert-danger alert-dismissible fade show mb-0" role="alert">
+        {% else %}
+        <div class="alert alert-success alert-dismissible fade show mb-0" role="alert">
+        {% endif %}
+          <strong>{{mensaje}}</strong>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      </div>
+    {% endif %}
+    
+  </div>
+  <table class="table table-striped align-middle">
+    <thead>
+      <tr>
+        <th scope="col">#</th>
+        <th scope="col">Matriculaa</th>
+        <th scope="col">Nombre</th>
+        <th scope="col">Apellidos</th>
+        <th scope="col"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if lista_docentes %}
+        {% for docente in lista_docentes %}
+          <tr>
+            <th scope="row">{{ forloop.counter }}</th>
+            <td>{{ docente.matricula }}</td>
+            <td>{{ docente.nombre }}</td>
+            <td>{{ docente.apellidos }}</td>
+            <td>
+              <div class="d-flex flex-row justify-content-center">
+                <a class="btn btn-primary me-2" href="{% url 'docente_detalle' docente.matricula%}">Horarios</a>
+                <button class="btn btn-warning me-2" 
+                data-bs-toggle="modal" 
+                data-bs-target="#editar-docente-modal"
+                data-bs-matricula="{{docente.matricula}}"
+                data-bs-nombre="{{ docente.nombre }}"
+                data-bs-apellidos="{{docente.apellidos}}" >Editar</button>
+                <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#eliminar-docente-modal" data-bs-matricula="{{docente.matricula}}">Eliminar</button>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="4" class="text-center">
+            <h5>No hay docentes registrados</h5>
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+
+{% endblock %}
+
+{% block modals %}
+
+<!-- Modal agregar nuevo docente-->
+<div class="modal fade" novalidate id="crear-docente-modal" tabindex="-1" aria-labelledby="crear-docente-modal-label" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="crear-docente-modal-label">Registrar nuevo docente</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form action="{% url 'docente_crear' %}" method="post" id="crear-docente-form" class="row g-3 needs-validation"  novalidate>
+          {% csrf_token %}
+          <fieldset>
+          <div>
+            <label for="#docente-matricula-input" class="form-label">Matricula: </label>
+            <input name="matricula" type="text" class="form-control" id="docente-matricula-input" value="" required >
+            <div class="invalid-feedback">
+              Agregue una matricula valida
+            </div>
+          </div>
+          <div>
+            <label for="#docente-nombre-input" class="form-label">Nombre: </label>
+            <input name="nombre" type="text" class="form-control" id="docente-nombre-input" value="" required >
+            <div class="invalid-feedback">
+              Agregue un nombre válido
+            </div>
+          </div>
+          <div>
+            <label for="#docente-apellidos-input" class="form-label">Apellidos: </label>
+            <input name="apellidos" type="text" class="form-control" id="docente-apellidos-input" value="" required >
+            <div class="invalid-feedback">
+              Agregue apellidos válidos
+            </div>
+          </div>
+        </fieldset>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" form="crear-docente-form" class="btn btn-primary">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar docente-->
+<div class="modal fade" id="editar-docente-modal" tabindex="-1" aria-labelledby="editar-docente-modal-label" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="editar-docente-modal-label">Editar datos del docente</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div>
+          <p>Matricula: <strong id="docente-matricula-label"> </strong></p>
+        </div>
+        <form action="{% url 'docente_actualizar' %}" method="post" id="editar-docente-form" class="row g-3">
+          {% csrf_token %}
+          <fieldset>
+            <input type="hidden" name="matricula" value="" id="docente-matricula-input">
+          <div>
+            <label for="#docente-nombre-input" class="form-label">Nombre: </label>
+            <input name="nombre" type="text" class="form-control" id="docente-nombre-input" value="" required >
+          </div>
+          <div>
+            <label for="#docente-apellidos-input" class="form-label">Apellidos: </label>
+            <input name="apellidos" type="text" class="form-control" id="docente-apellidos-input" value="" required >
+
+          </div>
+        </fieldset>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" form="editar-docente-form" class="btn btn-primary">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal eliminar docente-->
+<div class="modal fade" id="eliminar-docente-modal" tabindex="-1" aria-labelledby="eliminar-docente-modal-label" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="eliminar-docente-modal-label">Eliminar docente</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div>
+          <p>Se eliminarán todas su clases y estudiantes. ¿Desea <strong>eliminar</strong> los registros del docente? </p>
+        </div>
+        <form id="eliminar-docente-form" action="{% url 'docente_eliminar' %}" method="post" class="row g-3">
+          {% csrf_token %}
+          <input id="docente-matricula-input" type="hidden" name="matricula" value="">
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" form="eliminar-docente-form" class="btn btn-primary">Eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock modals %}
+
+{% block scripts %}
+<script>
+const editarDocenteModal = document.getElementById('editar-docente-modal')
+if (editarDocenteModal) {
+  editarDocenteModal.addEventListener('show.bs.modal', event => {
+    // Button that triggered the modal
+    const button = event.relatedTarget
+    // Extract info from data-bs-* attributes
+    const docenteMatricula = button.getAttribute('data-bs-matricula')
+    const docenteNombre = button.getAttribute('data-bs-nombre')
+    const docenteApellidos = button.getAttribute('data-bs-apellidos')
+    // If necessary, you could initiate an Ajax request here
+    // and then do the updating in a callback.
+    
+    // Update the modal's content.
+    const modalEditarDocenteMatricula = editarDocenteModal.querySelector('#docente-matricula-label')
+    const modalEditarDocenteMatriculaInput = editarDocenteModal.querySelector('#docente-matricula-input')
+    const modalEditarDocenteNombre = editarDocenteModal.querySelector("#docente-nombre-input")
+    const modalEditarDocenteApellidos = editarDocenteModal.querySelector("#docente-apellidos-input")
+
+    modalEditarDocenteMatriculaInput.value = docenteMatricula
+    modalEditarDocenteMatricula.textContent = docenteMatricula
+    modalEditarDocenteNombre.value = docenteNombre
+    modalEditarDocenteApellidos.value = docenteApellidos
+  })
+}
+
+const eliminarDocenteModal = document.getElementById("eliminar-docente-modal")
+if(eliminarDocenteModal){
+  eliminarDocenteModal.addEventListener('show.bs.modal', event =>{
+    const button = event.relatedTarget
+
+    const docenteMatricula = button.getAttribute('data-bs-matricula')
+
+    const inputMatricula = eliminarDocenteModal.querySelector('#docente-matricula-input')
+    
+    inputMatricula.value = docenteMatricula
+  })
+}
+
+// Example starter JavaScript for disabling form submissions if there are invalid fields
+(() => {
+  'use strict'
+
+  // Fetch all the forms we want to apply custom Bootstrap validation styles to
+  const forms = document.querySelectorAll('.needs-validation')
+
+  // Loop over them and prevent submission
+  Array.from(forms).forEach(form => {
+    form.addEventListener('submit', event => {
+      if (!form.checkValidity()) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+
+      form.classList.add('was-validated')
+    }, false)
+  })
+})()
+</script>
+{% endblock%}
+
+
+
